@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Менеджер кота-помощника</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .manager-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .config-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+        }
+        
+        h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin: 15px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8f4ff;
+        }
+        
+        .video-preview {
+            max-width: 200px;
+            max-height: 200px;
+            margin: 15px auto;
+            display: none;
+        }
+        
+        .tips-config {
+            margin-top: 20px;
+        }
+        
+        .tip-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .tip-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .btn-remove {
+            background: #ff6b6b;
+            padding: 8px 15px;
+        }
+        
+        .btn-remove:hover {
+            background: #ff5252;
+        }
+        
+        .export-section {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .code-output {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            display: none;
+        }
+
+        .file-path-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .instructions {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .feature-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body>
+    <div class="manager-container">
+        <h1>🐱 Менеджер кота-помощника</h1>
+        
+        <div class="config-section">
+            <h2>1. Загрузка видео кота</h2>
+            <div class="upload-area" id="uploadArea">
+                <p>📁 Перетащите сюда MP4-файл с котом</p>
+                <p><small>или нажмите для выбора файла</small></p>
+                <input type="file" id="videoFile" accept="video/mp4" style="display: none;">
+            </div>
+            <video class="video-preview" id="videoPreview" controls></video>
+            
+            <div class="instructions">
+                <strong>Важно:</strong> После загрузки видео укажите путь к файлу на вашем сайте:
+                <input type="text" id="videoPath" class="file-path-input" placeholder="например: /videos/cat-animation.mp4 или assets/cat.mp4" value="cat-animation.mp4">
+                <small>Это должен быть относительный путь от корня вашего сайта</small>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <h2>2. Настройка подсказок</h2>
+            <div class="tips-config">
+                <div id="tipsContainer">
+                    <div class="tip-item">
+                        <input type="text" class="tip-input" placeholder="Текст подсказки" value="Как добавить помощника?">
+                        <button class="btn btn-remove" onclick="removeTip(this)">×</button>
+                    </div>
+                    <div class="tip-item">
+                        <input type="text" class="tip-input" placeholder="Текст подсказки" value="Где найти документацию?">
+                        <button class="btn btn-remove" onclick="removeTip(this)">×</button>
+                    </div>
+                </div>
+                <button class="btn" onclick="addTip()">+ Добавить подсказку</button>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <h2>3. Настройки отображения</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <label>Размер кота:</label>
+                    <select id="catSize" class="tip-input">
+                        <option value="small">Маленький (120px)</option>
+                        <option value="medium" selected>Средний (180px)</option>
+                        <option value="large">Большой (240px)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Позиция по умолчанию:</label>
+                    <select id="catPosition" class="tip-input">
+                        <option value="bottom-right" selected>Справа внизу</option>
+                        <option value="bottom-left">Слева внизу</option>
+                        <option value="top-right">Справа вверху</option>
+                        <option value="top-left">Слева вверху</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <h3>Дополнительные функции:</h3>
+                <div class="feature-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableDragging" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Разрешить перемещение кота</span>
+                </div>
+                
+                <div class="feature-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableClose" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Кнопка закрытия кота</span>
+                </div>
+                
+                <div class="feature-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableMinimize" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Сворачивание в значок</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="export-section">
+            <button class="btn" onclick="generateCode()">🚀 Сгенерировать код кота</button>
+            <div class="code-output" id="codeOutput"></div>
+            <button class="btn" onclick="saveConfig()" style="background: #4CAF50;">💾 Сохранить конфигурацию</button>
+            <button class="btn" onclick="loadConfig()" style="background: #2196F3;">📂 Загрузить конфигурацию</button>
+        </div>
+
+        <div class="instructions">
+            <h3>📋 Инструкция по использованию:</h3>
+            <ol>
+                <li>Загрузите видео кота MP4</li>
+                <li>Укажите правильный путь к видеофайлу на вашем сайте</li>
+                <li>Настройте подсказки и внешний вид</li>
+                <li>Включите нужные дополнительные функции</li>
+                <li>Сгенерируйте код и вставьте на вашу страницу</li>
+                <li>Убедитесь, что видеофайл доступен по указанному пути</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let currentVideoData = null;
+        let currentVideoFile = null;
+        
+        // Обработка загрузки видео
+        const uploadArea = document.getElementById('uploadArea');
+        const videoFile = document.getElementById('videoFile');
+        const videoPreview = document.getElementById('videoPreview');
+        const videoPath = document.getElementById('videoPath');
+        
+        uploadArea.addEventListener('click', () => videoFile.click());
+        
+        videoFile.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.type === 'video/mp4') {
+                currentVideoFile = file;
+                const url = URL.createObjectURL(file);
+                videoPreview.style.display = 'block';
+                videoPreview.src = url;
+                currentVideoData = url;
+                
+                // Предлагаем имя файла по умолчанию
+                videoPath.value = file.name;
+            }
+        });
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type === 'video/mp4') {
+                currentVideoFile = file;
+                videoFile.files = e.dataTransfer.files;
+                const url = URL.createObjectURL(file);
+                videoPreview.style.display = 'block';
+                videoPreview.src = url;
+                currentVideoData = url;
+                
+                // Предлагаем имя файла по умолчанию
+                videoPath.value = file.name;
+            }
+        });
+        
+        // Управление подсказками
+        function addTip() {
+            const container = document.getElementById('tipsContainer');
+            const tipItem = document.createElement('div');
+            tipItem.className = 'tip-item';
+            tipItem.innerHTML = `
+                <input type="text" class="tip-input" placeholder="Текст подсказки">
+                <button class="btn btn-remove" onclick="removeTip(this)">×</button>
+            `;
+            container.appendChild(tipItem);
+        }
+        
+        function removeTip(button) {
+            if (document.querySelectorAll('.tip-item').length > 1) {
+                button.parentElement.remove();
+            }
+        }
+        
+        // Генерация кода
+        function generateCode() {
+            const tips = Array.from(document.querySelectorAll('.tip-input'))
+                .map(input => input.value)
+                .filter(text => text.trim() !== '');
+            
+            const size = document.getElementById('catSize').value;
+            const position = document.getElementById('catPosition').value;
+            const videoFilePath = videoPath.value.trim() || 'cat-animation.mp4';
+            const enableDragging = document.getElementById('enableDragging').checked;
+            const enableClose = document.getElementById('enableClose').checked;
+            const enableMinimize = document.getElementById('enableMinimize').checked;
+            
+            const sizeMap = {
+                small: '120px',
+                medium: '180px',
+                large: '240px'
+            };
+            
+            const positionMap = {
+                'bottom-right': 'bottom: 20px; right: 20px;',
+                'bottom-left': 'bottom: 20px; left: 20px;',
+                'top-right': 'top: 20px; right: 20px;',
+                'top-left': 'top: 20px; left: 20px;'
+            };
+            
+            const code = `
+<!-- Кот-помощник -->
+<div class="cat-assistant" style="${positionMap[position]} width: ${sizeMap[size]}; height: ${sizeMap[size]};">
+    <div class="cat-video-container">
+        <video class="cat-video" loop muted autoplay>
+            <source src="${videoFilePath}" type="video/mp4">
+            Ваш браузер не поддерживает видео.
+        </video>
+        <div class="cat-controls">
+            <button class="play-pause">⏸</button>
+            <button class="mute-unmute">🔇</button>
+            ${enableClose ? '<button class="cat-close-btn">×</button>' : ''}
+            ${enableMinimize ? '<button class="cat-minimize">−</button>' : ''}
+        </div>
+    </div>
+    
+    <div class="cat-speech-bubble">
+        <span class="cat-close">×</span>
+        <h3>Привет! Я ваш помощник</h3>
+        <p>Чем могу помочь?</p>
+        <div class="cat-tips">
+            ${tips.map(tip => `<div class="cat-tip">${tip}</div>`).join('')}
+        </div>
+    </div>
+</div>
+
+<!-- Минимизированный кот -->
+<div class="cat-minimized" style="display: none;">
+    <div class="minimized-icon">🐱</div>
+</div>
+
+<style>
+.cat-assistant {
+    position: fixed;
+    z-index: 10000;
+    cursor: ${enableDragging ? 'grab' : 'pointer'};
+    transition: transform 0.3s;
+    ${enableDragging ? 'user-select: none; touch-action: none;' : ''}
+}
+
+.cat-assistant:hover {
+    transform: scale(1.05);
+}
+
+.cat-assistant.dragging {
+    cursor: grabbing;
+    opacity: 0.9;
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.cat-video-container {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    border: 3px solid #667eea;
+}
+
+.cat-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.cat-controls {
+    position: absolute;
+    bottom: 5px;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.cat-video-container:hover .cat-controls {
+    opacity: 1;
+}
+
+.cat-controls button {
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.cat-controls button:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: scale(1.1);
+}
+
+.cat-close-btn {
+    background: rgba(255, 107, 107, 0.9) !important;
+}
+
+.cat-minimize {
+    background: rgba(255, 193, 7, 0.9) !important;
+}
+
+.cat-speech-bubble {
+    position: absolute;
+    background: white;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+    width: 280px;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    transform: translateY(10px);
+}
+
+.cat-speech-bubble.show {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateY(0);
+}
+
+.cat-close {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    cursor: pointer;
+    font-weight: bold;
+    color: #888;
+    font-size: 18px;
+}
+
+.cat-tip {
+    background: #f0f0f0;
+    padding: 10px 15px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-left: 4px solid #667eea;
+}
+
+.cat-tip:hover {
+    background: #e0e0e0;
+    transform: translateX(5px);
+}
+
+/* Позиционирование облачка */
+.cat-assistant[style*="bottom"] .cat-speech-bubble {
+    bottom: calc(100% + 20px);
+}
+
+.cat-assistant[style*="top"] .cat-speech-bubble {
+    top: calc(100% + 20px);
+}
+
+.cat-assistant[style*="right"] .cat-speech-bubble {
+    right: 0;
+}
+
+.cat-assistant[style*="left"] .cat-speech-bubble {
+    left: 0;
+}
+
+/* Минимизированный кот */
+.cat-minimized {
+    position: fixed;
+    z-index: 9999;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: #667eea;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    transition: all 0.3s;
+}
+
+.cat-minimized:hover {
+    transform: scale(1.1);
+    background: #5a6fd8;
+}
+
+.minimized-icon {
+    font-size: 24px;
+    color: white;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const catAssistant = document.querySelector('.cat-assistant');
+    const speechBubble = document.querySelector('.cat-speech-bubble');
+    const catVideo = document.querySelector('.cat-video');
+    const playPauseBtn = document.querySelector('.play-pause');
+    const muteUnmuteBtn = document.querySelector('.mute-unmute');
+    const closeBtn = document.querySelector('.cat-close-btn');
+    const minimizeBtn = document.querySelector('.cat-minimize');
+    const minimizedCat = document.querySelector('.cat-minimized');
+    ${enableMinimize ? `const minimizedIcon = document.querySelector('.minimized-icon');` : ''}
+    
+    let isDragging = false;
+    let dragStartX, dragStartY, initialX, initialY;
+
+    ${enableDragging ? `
+    // Функционал перемещения
+    catAssistant.addEventListener("mousedown", startDrag);
+    catAssistant.addEventListener("touchstart", startDrag, { passive: false });
+
+    function startDrag(e) {
+        // Не начинаем перемещение если кликнули по кнопке
+        if (e.target.tagName === 'BUTTON') return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        isDragging = true;
+        catAssistant.classList.add('dragging');
+        
+        // Сохраняем начальные координаты
+        const rect = catAssistant.getBoundingClientRect();
+        
+        if (e.type === "touchstart") {
+            dragStartX = e.touches[0].clientX;
+            dragStartY = e.touches[0].clientY;
+        } else {
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+        }
+        
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        document.addEventListener("mousemove", onDrag);
+        document.addEventListener("touchmove", onDrag, { passive: false });
+        document.addEventListener("mouseup", stopDrag);
+        document.addEventListener("touchend", stopDrag);
+    }
+
+    function onDrag(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        
+        let clientX, clientY;
+        if (e.type === "touchmove") {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        const deltaX = clientX - dragStartX;
+        const deltaY = clientY - dragStartY;
+        
+        const newX = initialX + deltaX;
+        const newY = initialY + deltaY;
+        
+        // Ограничиваем перемещение в пределах окна
+        const maxX = window.innerWidth - catAssistant.offsetWidth;
+        const maxY = window.innerHeight - catAssistant.offsetHeight;
+        
+        catAssistant.style.left = Math.max(0, Math.min(newX, maxX)) + "px";
+        catAssistant.style.top = Math.max(0, Math.min(newY, maxY)) + "px";
+        catAssistant.style.right = "auto";
+        catAssistant.style.bottom = "auto";
+    }
+
+    function stopDrag() {
+        if (!isDragging) return;
+        isDragging = false;
+        catAssistant.classList.remove('dragging');
+        
+        document.removeEventListener("mousemove", onDrag);
+        document.removeEventListener("touchmove", onDrag);
+        document.removeEventListener("mouseup", stopDrag);
+        document.removeEventListener("touchend", stopDrag);
+    }
+    ` : ''}
+    
+    // Открытие/закрытие подсказок
+    catAssistant.addEventListener('click', function(e) {
+        if (isDragging) return;
+        if (e.target.tagName === 'BUTTON') return;
+        speechBubble.classList.toggle('show');
+    });
+    
+    document.querySelector('.cat-close').addEventListener('click', function(e) {
+        e.stopPropagation();
+        speechBubble.classList.remove('show');
+    });
+    
+    document.querySelectorAll('.cat-tip').forEach(tip => {
+        tip.addEventListener('click', function() {
+            alert('Выбрано: ' + this.textContent);
+            speechBubble.classList.remove('show');
+        });
+    });
+
+    // Управление видео
+    if (playPauseBtn) {
+        playPauseBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (catVideo.paused) {
+                catVideo.play();
+                playPauseBtn.textContent = '⏸';
+            } else {
+                catVideo.pause();
+                playPauseBtn.textContent = '▶';
+            }
+        });
+    }
+    
+    if (muteUnmuteBtn) {
+        muteUnmuteBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            catVideo.muted = !catVideo.muted;
+            muteUnmuteBtn.textContent = catVideo.muted ? '🔇' : '🔊';
+        });
+    }
+    
+    ${enableClose ? `
+    // Закрытие кота
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            ${enableMinimize ? `
+            // Сворачиваем в значок
+            catAssistant.style.display = 'none';
+            minimizedCat.style.display = 'flex';
+            ` : `
+            // Полностью скрываем
+            catAssistant.style.display = 'none';
+            `}
+            speechBubble.classList.remove('show');
+        });
+    }
+    ` : ''}
+    
+    ${enableMinimize ? `
+    // Сворачивание/разворачивание
+    if (minimizeBtn) {
+        minimizeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            catAssistant.style.display = 'none';
+            minimizedCat.style.display = 'flex';
+            speechBubble.classList.remove('show');
+        });
+    }
+    
+    if (minimizedCat) {
+        minimizedCat.addEventListener('click', function() {
+            minimizedCat.style.display = 'none';
+            catAssistant.style.display = 'block';
+        });
+    }
+    ` : ''}
+    
+    // Автопоказ подсказки
+    setTimeout(() => {
+        if (speechBubble) speechBubble.classList.add('show');
+    }, 3000);
+    
+    setTimeout(() => {
+        if (speechBubble) speechBubble.classList.remove('show');
+    }, 15000);
+});
+<\/script>
+            `.trim();
+            
+            document.getElementById('codeOutput').style.display = 'block';
+            document.getElementById('codeOutput').textContent = code;
+        }
+        
+        // Сохранение/загрузка конфигурации
+        function saveConfig() {
+            const config = {
+                videoPath: videoPath.value.trim(),
+                tips: Array.from(document.querySelectorAll('.tip-input')).map(input => input.value),
+                size: document.getElementById('catSize').value,
+                position: document.getElementById('catPosition').value,
+                enableDragging: document.getElementById('enableDragging').checked,
+                enableClose: document.getElementById('enableClose').checked,
+                enableMinimize: document.getElementById('enableMinimize').checked,
+                timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'cat-assistant-config.json';
+            a.click();
+        }
+        
+        function loadConfig() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const config = JSON.parse(e.target.result);
+                        // Загружаем конфигурацию в форму
+                        videoPath.value = config.videoPath || 'cat-animation.mp4';
+                        
+                        // Загружаем подсказки
+                        const tipsContainer = document.getElementById('tipsContainer');
+                        tipsContainer.innerHTML = '';
+                        config.tips.forEach(tip => {
+                            const tipItem = document.createElement('div');
+                            tipItem.className = 'tip-item';
+                            tipItem.innerHTML = `
+                                <input type="text" class="tip-input" value="${tip}">
+                                <button class="btn btn-remove" onclick="removeTip(this)">×</button>
+                            `;
+                            tipsContainer.appendChild(tipItem);
+                        });
+                        
+                        document.getElementById('catSize').value = config.size || 'medium';
+                        document.getElementById('catPosition').value = config.position || 'bottom-right';
+                        document.getElementById('enableDragging').checked = config.enableDragging !== false;
+                        document.getElementById('enableClose').checked = config.enableClose !== false;
+                        document.getElementById('enableMinimize').checked = config.enableMinimize !== false;
+                        
+                        alert('Конфигурация загружена! Теперь сгенерируйте код.');
+                    } catch (error) {
+                        alert('Ошибка загрузки конфигурации: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+    </script>
+</body>
+</html>
